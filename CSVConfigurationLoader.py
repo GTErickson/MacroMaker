@@ -3,6 +3,7 @@ import os
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from pathlib import Path
+from errors import ErrorCategory, ErrorSeverity, LoaderError
 
 @dataclass 
 class MacroConfig:
@@ -11,11 +12,16 @@ class MacroConfig:
 
 class CSVConfigLoader:
     def __init__(self):
-        self.loaded_configs: List[MacroConfig] = []
+        self.loaded_macros: List[MacroConfig] = []
         self.current_csv_file: Optional[str] = None
+        self.errors: List[LoaderError] = []
+
+    def add_error(self, category: ErrorCategory, severity: ErrorSeverity, message: str, line_number: int = 0):
+        error = LoaderError(category, severity, message, line_number)
+        self.errors.append(error)
 
     def check_header(self, all_rows) -> list:
-        if all_rows and len(all_rows) > 0 and len(all_rows[0]) > 0:
+        if len(all_rows[0]) > 0:
             if (all_rows[0][0].lower() == "key combination" or 
                 all_rows[0][0].lower() == "key" or 
                 all_rows[0][0].lower() == "combination" or
@@ -23,13 +29,19 @@ class CSVConfigLoader:
                 all_rows.pop(0)
         return all_rows
 
-
     def load_csv_file(self, csv_file_path: str) -> bool:
-        self.loaded_configs.clear()
+        self.loaded_macros.clear()
+        self.errors.clear()
         self.current_csv_file = None
 
         if not os.path.exists(csv_file_path):
-            print(f"Error: File '{csv_file_path}' does not exist")
+            self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
+                           f"CSV file cannot be opened: {csv_file_path}")
+            return False
+        
+        if not csv_file_path.lower().endswith('.csv'):
+            self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
+                        f"File must be a .csv file: {csv_file_path}")
             return False
 
         try:
@@ -37,48 +49,64 @@ class CSVConfigLoader:
                 reader = csv.reader(csvfile)
                 all_rows = list(reader)
 
+                if not all_rows:
+                    self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
+                           f"CSV file is empty: {csv_file_path}")
+                    return False
+    
                 all_rows = self.check_header(all_rows) 
+
+                if not all_rows:
+                    self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
+                           f"CSV file contains only headers: {csv_file_path}")
+                    return False
 
                 for row_number, row in enumerate(all_rows, 1):
                     if not row or len(row) < 2:
+                        self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
+                           f"Row {row_number} has missing fields, skipping")
                         continue
 
                     key_combination = row[0].strip()
                     action_text = row[1].strip()
 
                     if not key_combination or not action_text:
-                        print(f"Warning: Row {row_number} has empty fields, skipping")
+                        self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
+                           f"Row {row_number} has empty fields, skipping")
                         continue
+
+                    if len(row) > 2:
+                        self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
+                            f"Row {row_number} has extra columns, ignoring them")
 
                     macro = MacroConfig(
                         key_combination = key_combination,
                         action_text = action_text
                     )
 
-                    self.loaded_configs.append(macro)
+                    self.loaded_macros.append(macro)
 
             self.current_csv_file = csv_file_path
-            print(f"Successfully loaded {len(self.loaded_configs)} macros from '{csv_file_path}'")
+            print(f"Successfully loaded {len(self.loaded_macros)} macros from '{csv_file_path}'")
+            
             return True
         
         except Exception as e:
-            print(f"Error reading file: {e}")
-            return False
-        
-    def get_macros(self) -> List[MacroConfig]:
+            self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
+                           f"Error reading file:  {csv_file_path}")
         return self.get_macros
     
     def get_current_file(self) -> Optional[str]:
         return self.current_csv_file
 
     def print_macros(self):
-        if not self.loaded_configs:
+        if not self.loaded_macros:
             print("No macros loaded")
             return
         
         print(f"\nLoaded macros from: {self.current_csv_file}")
         print("-" * 50)
-        for i, macro in enumerate(self.loaded_configs, 1):
+        for i, macro in enumerate(self.loaded_macros, 1):
             print(f"{i}. Key: '{macro.key_combination}'-> Text: '{macro.action_text}'")
 
 if __name__ == "__main__":
@@ -98,6 +126,9 @@ Ctrl+D,import datetime"""
     
     print("Testing CSV Loader...")
     success = loader.load_csv_file("test_macros.csv")
+
+    for error in loader.errors:
+                print(f"{error.severity.value.upper()}! {error.category.value.upper()} error: {error.message}")
     
     if success:
         loader.print_macros()
