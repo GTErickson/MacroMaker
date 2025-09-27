@@ -14,7 +14,17 @@ class CSVConfigLoader:
         self.loaded_configs: List[MacroConfig] = []
         self.current_csv_file: Optional[str] = None
 
-    def load_csv_config(self, csv_file_path: str) -> bool:
+    def check_header(self, all_rows) -> list:
+        if all_rows and len(all_rows) > 0 and len(all_rows[0]) > 0:
+            if (all_rows[0][0].lower() == "key combination" or 
+                all_rows[0][0].lower() == "key" or 
+                all_rows[0][0].lower() == "combination" or
+                all_rows[0][0].lower() == "macro"):
+                all_rows.pop(0)
+        return all_rows
+
+
+    def load_csv_file(self, csv_file_path: str) -> bool:
         self.loaded_configs.clear()
         self.current_csv_file = None
 
@@ -25,8 +35,11 @@ class CSVConfigLoader:
         try:
             with open(csv_file_path, 'r', encoding="utf-8") as csvfile:
                 reader = csv.reader(csvfile)
+                all_rows = list(reader)
 
-                for row_number, row in enumerate(reader, 1):
+                all_rows = self.check_header(all_rows) 
+
+                for row_number, row in enumerate(all_rows, 1):
                     if not row or len(row) < 2:
                         continue
 
@@ -70,7 +83,8 @@ class CSVConfigLoader:
 
 if __name__ == "__main__":
     # Create a simple test CSV file
-    test_csv_content = """Ctrl+Shift+F,def function_name():
+    test_csv_content = """Key Combination, Action/Text
+Ctrl+Shift+F,def function_name():
 F1,=SUM(A1:A10)
 Alt+T,Hello World!
 Ctrl+D,import datetime"""
@@ -83,7 +97,7 @@ Ctrl+D,import datetime"""
     loader = CSVConfigLoader()
     
     print("Testing CSV Loader...")
-    success = loader.load_csv_config("test_macros.csv")
+    success = loader.load_csv_file("test_macros.csv")
     
     if success:
         loader.print_macros()
