@@ -21,7 +21,7 @@ class CSVConfigLoader:
         self.errors.append(error)
 
     def check_header(self, all_rows) -> list:
-        if all_rows and len(all_rows) > 0 and len(all_rows[0]) > 0:
+        if len(all_rows[0]) > 0:
             if (all_rows[0][0].lower() == "key combination" or 
                 all_rows[0][0].lower() == "key" or 
                 all_rows[0][0].lower() == "combination" or
@@ -38,18 +38,33 @@ class CSVConfigLoader:
             self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
                            f"CSV file cannot be opened: {csv_file_path}")
             return False
+        
+        if not csv_file_path.lower().endswith('.csv'):
+            self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
+                        f"File must be a .csv file: {csv_file_path}")
+            return False
 
         try:
             with open(csv_file_path, 'r', encoding="utf-8") as csvfile:
                 reader = csv.reader(csvfile)
                 all_rows = list(reader)
 
+                if not all_rows:
+                    self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
+                           f"CSV file is empty: {csv_file_path}")
+                    return False
+    
                 all_rows = self.check_header(all_rows) 
+
+                if not all_rows:
+                    self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
+                           f"CSV file contains only headers: {csv_file_path}")
+                    return False
 
                 for row_number, row in enumerate(all_rows, 1):
                     if not row or len(row) < 2:
                         self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
-                           f"Row {row_number} has empty fields, skipping")
+                           f"Row {row_number} has missing fields, skipping")
                         continue
 
                     key_combination = row[0].strip()
@@ -59,6 +74,10 @@ class CSVConfigLoader:
                         self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
                            f"Row {row_number} has empty fields, skipping")
                         continue
+
+                    if len(row) > 2:
+                        self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
+                            f"Row {row_number} has extra columns, ignoring them")
 
                     macro = MacroConfig(
                         key_combination = key_combination,
@@ -70,16 +89,11 @@ class CSVConfigLoader:
             self.current_csv_file = csv_file_path
             print(f"Successfully loaded {len(self.loaded_macros)} macros from '{csv_file_path}'")
             
-            for error in self.errors:
-                print(f"{error.severity.value.upper()}! {error.category.value.upper()} error: {error.message}")
             return True
         
         except Exception as e:
             self.add_error(ErrorCategory.FILE, ErrorSeverity.ERROR, 
                            f"Error reading file:  {csv_file_path}")
-            return False
-        
-    def get_macros(self) -> List[MacroConfig]:
         return self.get_macros
     
     def get_current_file(self) -> Optional[str]:
@@ -98,7 +112,7 @@ class CSVConfigLoader:
 if __name__ == "__main__":
     # Create a simple test CSV file
     test_csv_content = """Key Combination, Action/Text
-Ctrl+Shift+F,def function_name():,1
+Ctrl+Shift+F,def function_name():
 F1,=SUM(A1:A10)
 Alt+T,Hello World!
 Ctrl+D,import datetime"""
@@ -112,6 +126,9 @@ Ctrl+D,import datetime"""
     
     print("Testing CSV Loader...")
     success = loader.load_csv_file("test_macros.csv")
+
+    for error in loader.errors:
+                print(f"{error.severity.value.upper()}! {error.category.value.upper()} error: {error.message}")
     
     if success:
         loader.print_macros()
