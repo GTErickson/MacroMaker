@@ -109,6 +109,28 @@ class CSVConfigLoader:
         for i, macro in enumerate(self.loaded_macros, 1):
             print(f"{i}. Key: '{macro.key_combination}'-> Text: '{macro.action_text}'")
 
+    def run_loader(self):
+        while(True):
+            os.system('cls' if os.name == 'nt' else 'clear')
+            print("CSV loader")
+            print("*"*20)
+            csv_file_path = input("Enter File Path: ")
+            success = self.load_csv_file(csv_file_path)
+
+            for error in self.errors:
+                    print(f"{error.severity.value.upper()}! {error.category.value.upper()}: {error.message}")
+        
+            if success:
+                self.print_macros()
+            else:
+                print("Failed to load CSV file")
+        
+            if not (input("Would you like to load another file? (y/n) ").startswith("y")):
+                return
+
+
+              
+
 if __name__ == "__main__":
     # Create a simple test CSV file
     test_csv_content = """Key Combination, Action/Text
@@ -125,15 +147,7 @@ Ctrl+D,import datetime"""
     loader = CSVConfigLoader()
     
     print("Testing CSV Loader...")
-    success = loader.load_csv_file("test_macros.csv")
-
-    for error in loader.errors:
-                print(f"{error.severity.value.upper()}! {error.category.value.upper()} error: {error.message}")
-    
-    if success:
-        loader.print_macros()
-    else:
-        print("Failed to load CSV file")
+    loader.run_loader()
     
     # Clean up the test file
     os.remove("test_macros.csv")
