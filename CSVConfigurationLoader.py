@@ -130,7 +130,7 @@ class CSVConfigLoader:
         os.system('cls' if os.name == 'nt' else 'clear')
 
         while(True):
-            print("CSV loader")
+            print("\nCSV loader")
             print("*"*20)
             print(f"Currently loaded: {len(self.macro_sets)} file(s)")
             csv_file_path = input("Enter file path (or 'done' to finish): ")
@@ -155,18 +155,18 @@ if __name__ == "__main__":
     # Test CSV 1: Excel/Accounting Macros
     test_csv_content1 = """Key Combination,Action/Text
     F1,=SUM(A1:A10)
-    F2,=VLOOKUP(A1,Sheet2!A:B,2,FALSE)
+    F2,"=VLOOKUP(A1,Sheet2!A:B,2,FALSE)"
     Ctrl+D,=TODAY()
-    Ctrl+Shift+P,=IF(A1>0,"Profit","Loss")
+    Ctrl+Shift+P,"=IF(A1>0,""Profit"",""Loss"")"
     Alt+F,=AVERAGE(B1:B20)"""
 
     # Test CSV 2: Programming/Code Macros
     test_csv_content2 = """Key Combination,Action/Text
-    Ctrl+Shift+F,def function_name():\n    pass
-    Alt+C,class ClassName:\n    def __init__(self):\n        pass
-    Ctrl+I,import datetime\nfrom typing import List
-    F5,if __name__ == "__main__":\n    pass
-    Ctrl+T,try:\n    pass\nexcept Exception as e:\n    print(e)"""
+    Ctrl+Shift+F,"def function_name():\n    pass"
+    Alt+C,"class ClassName:\n    def __init__(self):\n        pass"
+    Ctrl+I,"import datetime\nfrom typing import List"
+    F5,"if __name__ == ""__main__"":\n    pass"
+    Ctrl+T,"try:\n    pass\nexcept Exception as e:\n    print(e)"""
 
     # Test CSV 3: Email/Communication Templates
     test_csv_content3 = """Key Combination,Action/Text
