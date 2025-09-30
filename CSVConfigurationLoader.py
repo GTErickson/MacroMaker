@@ -5,6 +5,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from errors import ErrorCategory, ErrorSeverity, LoaderError
 
+VALID_FUNCTION_KEYS = {'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 
+                       'F7', 'F8', 'F9', 'F10', 'F11', 'F12'}
+VALID_LETTERS = set('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+VALID_NUMBERS = set('0123456789')
+VALID_SPECIAL_KEYS = {'SPACE', 'ENTER', 'TAB', 'ESC', 'BACKSPACE', 
+                      'DELETE', 'HOME', 'END', 'PAGEUP', 'PAGEDOWN',
+                      'INSERT', 'UP', 'DOWN', 'LEFT', 'RIGHT'}
+
 @dataclass 
 class MacroConfig:
     key_combination: str
@@ -35,6 +43,13 @@ class CSVConfigLoader:
                 all_rows[0][0].lower() == "macro"):
                 all_rows.pop(0)
         return all_rows
+    
+    def is_valid_key(self, key: str) -> bool:
+        key_upper = key.upper()
+        return (key_upper in VALID_FUNCTION_KEYS or
+                key_upper in VALID_LETTERS or
+                key in VALID_NUMBERS or
+                key_upper in VALID_SPECIAL_KEYS)
 
     def load_csv_file(self, csv_file_path: str) -> bool:
 
@@ -82,6 +97,11 @@ class CSVConfigLoader:
                            f"Row {row_number} has empty fields, skipping")
                         continue
 
+                    if not self.is_valid_key(key_combination):
+                        self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
+                           f"Row {row_number} has invalid key combination '{key_combination}', skipping")
+                        continue
+
                     if len(row) > 2:
                         self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
                             f"Row {row_number} has extra columns, ignoring them")
@@ -123,6 +143,7 @@ class CSVConfigLoader:
             print(f"Macro Set {1} ({macro_set.file_path})")
             for i, macro in enumerate(macro_set.macros, 1):
                 print(f"{i}. Key: '{macro.key_combination}'-> Text: '{macro.action_text}'")
+            print("\n")
 
     def run_loader(self):
         self.macro_sets.clear()
@@ -131,7 +152,7 @@ class CSVConfigLoader:
 
         while(True):
             print("\nCSV loader")
-            print("*"*20)
+            print("-"*50)
             print(f"Currently loaded: {len(self.macro_sets)} file(s)")
             csv_file_path = input("Enter file path (or 'done' to finish): ")
 
