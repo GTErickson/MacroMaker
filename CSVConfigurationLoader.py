@@ -12,10 +12,11 @@ VALID_NUMBERS = set('0123456789')
 VALID_SPECIAL_KEYS = {'SPACE', 'ENTER', 'TAB', 'ESC', 'BACKSPACE', 
                       'DELETE', 'HOME', 'END', 'PAGEUP', 'PAGEDOWN',
                       'INSERT', 'UP', 'DOWN', 'LEFT', 'RIGHT'}
+VALID_MODIFIERS = {'CTRL', 'ALT', 'SHIFT', 'WIN'}
 
 @dataclass 
 class MacroConfig:
-    key_combination: str
+    key_combination: list[str]
     action_text: str
 
 @dataclass
@@ -49,7 +50,8 @@ class CSVConfigLoader:
         return (key_upper in VALID_FUNCTION_KEYS or
                 key_upper in VALID_LETTERS or
                 key in VALID_NUMBERS or
-                key_upper in VALID_SPECIAL_KEYS)
+                key_upper in VALID_SPECIAL_KEYS  or
+                key_upper in VALID_MODIFIERS)
 
     def load_csv_file(self, csv_file_path: str) -> bool:
 
@@ -97,21 +99,34 @@ class CSVConfigLoader:
                            f"Row {row_number} has empty fields, skipping")
                         continue
 
-                    if not self.is_valid_key(key_combination):
-                        self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
-                           f"Row {row_number} has invalid key combination '{key_combination}', skipping")
+                    if '+' in key_combination:
+                        key_list = key_combination.split("+")
+                    else:
+                        key_list = [key_combination]
+
+                    valid = True
+                    for key in key_list:
+                        if not self.is_valid_key(key.strip()):
+                            self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
+                                        f"Row {row_number} has invalid key '{key}' in combination '{key_combination}', skipping")
+                            valid = False
+                            break
+
+                    if not valid:
                         continue
 
-                    if len(row) > 2:
-                        self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
-                            f"Row {row_number} has extra columns, ignoring them")
+                    key_list = [key.strip() for key in key_list]
 
                     macro = MacroConfig(
-                        key_combination = key_combination,
+                        key_combination = key_list,
                         action_text = action_text
                     )
 
                     temp_macros.append(macro)
+
+                    if len(row) > 2:
+                        self.add_error(ErrorCategory.ROW, ErrorSeverity.WARNING, 
+                            f"Row {row_number} has extra columns, ignoring them")
 
             macro_set = MacroSet(
                 file_path=csv_file_path,
