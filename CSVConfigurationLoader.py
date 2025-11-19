@@ -52,6 +52,13 @@ class CSVConfigLoader:
                 key in VALID_NUMBERS or
                 key_upper in VALID_SPECIAL_KEYS  or
                 key_upper in VALID_MODIFIERS)
+    
+    def is_duplicate_key(self, key_list: List[str]) -> bool:
+        for macro_set in self.macro_sets:
+            for macro in macro_set.macros:
+                if macro.key_combination == key_list:
+                    return True
+        return False
 
     def load_csv_file(self, csv_file_path: str) -> bool:
 
@@ -115,7 +122,18 @@ class CSVConfigLoader:
                     if not valid:
                         continue
 
-                    key_list = [key.strip() for key in key_list]
+                    key_list = [key.strip().upper() for key in key_list]
+
+                    if self.is_duplicate_key(key_list):
+                        self.add_error(ErrorCategory.VALIDATION, ErrorSeverity.WARNING,
+                                    f"Row {row_number}: Duplicate key combination '{'+'.join(key_list)}', skipping")
+                        continue
+
+                    for existing_macro in temp_macros:
+                        if existing_macro.key_combination == key_list:
+                            self.add_error(ErrorCategory.VALIDATION, ErrorSeverity.WARNING,
+                                        f"Row {row_number}: Duplicate key combination '{'+'.join(key_list)}' found in this file, skipping")
+                        continue
 
                     macro = MacroConfig(
                         key_combination = key_list,
